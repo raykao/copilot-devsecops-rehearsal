@@ -1,0 +1,5 @@
+.terraform/
+*.tfstate*
+plan.txt
+tfplan
+app.zip
