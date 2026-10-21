@@ -53,6 +53,7 @@ jobs:
     name: Plan
     if: github.event_name == 'pull_request'
     needs: validate
+    environment: plan
     runs-on: ubuntu-latest
     permissions:
       contents: read
