@@ -42,7 +42,27 @@ Timings are from a live test run on 20 Oct. Never wait on these in front of the 
 | explain-plan, audit, break and fix | 10–40 s | Live |
 | terraform fmt and validate | under 5 s | Live |
 
-**Pre-built runs (captured 21 Oct in `raykao/copilot-devsecops-rehearsal`, now public)**
+**This repo is the live demo repo.** The Azure side is already configured, so nothing is set up on stage:
+
+| Already in place | Where |
+|---|---|
+| Entra app registration `dep2-devsecops-demo-oidc`, `Contributor` on the subscription | Azure |
+| Federated credentials for `environment:production` and `environment:plan` (three subject formats each) | Azure |
+| `production` environment, you as required reviewer | GitHub |
+| `plan` environment, no reviewer | GitHub |
+| `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` as **environment** secrets in both environments (no repo-level secrets) | GitHub |
+
+The pipeline Copilot writes must put the plan job in `environment: plan` and the apply and rollback jobs in `environment: production`. The scaffold-pipeline prompt says so. If the generated plan job has no environment, it can't see the secrets and `azure/login` fails.
+
+**State is local.** This subscription's policy forces storage public access off, so GitHub-hosted runners can't reach a remote backend. `infra/main.tf` has no backend block and the pipeline uses plain `terraform init`. Say so on slide 10 if asked. The proper answer is a self-hosted runner with a private endpoint, which Copilot can't verify.
+
+**Live path, end to end**
+1. Run the prompts in order (scaffold-infra, explain-plan, scaffold-pipeline). The files stay local until you commit.
+2. Commit the result on a branch and open a PR. The plan job runs in about 40 s and posts the comment. This needs no approval.
+3. Merge the PR in the GitHub UI. A merge is a push to `main`, so the apply job starts and **waits for your approval**. Approve it, then keep talking: apply takes 2 to 4 minutes and the smoke check follows.
+4. Don't wait on it. Switch to the pre-built runs below while it finishes.
+
+**Pre-built runs (captured 21 Oct, same repo, history kept)**
 
 | Cue | Link |
 |---|---|
@@ -52,29 +72,20 @@ Timings are from a live test run on 20 Oct. Never wait on these in front of the 
 | Rollback to the green commit | <https://github.com/raykao/copilot-devsecops-rehearsal/actions/runs/39609556035> |
 | Rollback waiting for approval (live approve cue) | <https://github.com/raykao/copilot-devsecops-rehearsal/actions/runs/39612186756> |
 
+The repo is **public** so the `production` environment can require your approval. A scan found no credentials: no GUIDs in any commit, and run logs mask the tenant, subscription and client IDs. Make it private again after the session (`gh repo edit raykao/copilot-devsecops-rehearsal --visibility private`).
 
-The rehearsal repo is **public** so the `production` environment can require your approval. A scan found no credentials: no GUIDs in any commit, and run logs mask the tenant, subscription and client IDs. Make it private again after the session (`gh repo edit raykao/copilot-devsecops-rehearsal --visibility private`).
+**Local-state caveats**
+- Every run starts with empty state. A second apply or a rollback fails with "resource group already exists" unless you delete `rg-wealth-accounts-dev` first. Delete it before the demo and between any repeated runs.
+- The waiting rollback run is stale. Don't approve it unless `rg-wealth-accounts-dev` is deleted; it just re-applies the old green commit.
+- If `azure/login` fails with an OIDC subject you haven't registered, copy the subject from the error and add it as a federated credential on the app.
 
-Limits of this rehearsal, say them if asked: it used **local state** (this subscription's policy forces storage public access off, so GitHub-hosted runners can't reach a remote backend). Before you approve the waiting rollback live, delete `rg-wealth-accounts-dev`, or the apply fails with "already exists". The rehearsal repo's `main` has the deploy step removed on purpose (that is the red run). Delete `rg-wealth-accounts-dev` when you're done.
-
-**Day-before checklist** (do it in a separate rehearsal repo, not the demo repo)
-1. **Bootstrap Azure and GitHub in one command** (needs `az login` and `gh auth login`):
-
-   ```bash
-   chmod +x scripts/bootstrap-azure.sh
-   scripts/bootstrap-azure.sh <owner>/<rehearsal-repo> --public-state
-   ```
-
-   It creates the state storage account (TLS 1.2, HTTPS only, **no anonymous access, no shared keys**, Entra ID auth only), the `tfstate` container, the OIDC app registration with federated credentials for the `production` environment and pull requests (both subject formats), `Contributor` on the subscription, `Storage Blob Data Contributor` on the state account, the three `AZURE_*` secrets, the two `TFSTATE_*` variables and the `production` environment with you as reviewer.
-2. **Know what `--public-state` means.** It only makes the storage *endpoint* reachable from the internet so GitHub-hosted runners can use it. Access still needs an Entra ID token with a data role. If your subscription policy forces public access off, the script creates it closed and tells you; then use local state for the rehearsal and say so on slide 10. The proper answer is a self-hosted runner with a private endpoint, which is one of the things Copilot can't verify. With local state every run starts empty, so a second apply or a rollback fails with "resource group already exists"; delete the resource group between runs.
-3. Check the rehearsal `azure/login` step. If it fails with an OIDC subject you haven't registered, copy the subject from the error and add it as a federated credential.
-4. Use `canadaeast`. The test subscription had no B1 quota in `canadacentral`. Set the `location` default before the rehearsal.
-5. Push the answer key to `main` and approve the apply. Confirm the green apply and smoke, and open the app URL.
-6. Open a PR that changes `infra/` so the plan comment exists.
-7. Capture a red smoke run, for example by removing the deploy step on a branch. Keep the tab open.
-8. Run rollback once from the Actions tab with a known-good SHA. Keep the approval screen and the run open.
-9. Open these tabs in order: PR with plan comment, green apply run, green smoke job, red smoke run, rollback approval, rollback run.
-10. Tear down afterward: `scripts/bootstrap-azure.sh <owner>/<repo> --destroy`, then delete `rg-wealth-accounts-*`.
+**Day-before checklist**
+1. Run `terraform -chdir=infra init -backend=false`, then **Demo: preflight**. All 9 checks should pass.
+2. Delete `rg-wealth-accounts-dev` so the live apply starts clean.
+3. Confirm the environments: `gh api repos/raykao/copilot-devsecops-rehearsal/environments --jq '.environments[].name'` shows `plan` and `production`, and each has three secrets.
+4. Do one dry run of the live path (steps 1 to 3 above) if time allows, then delete the resource group again.
+5. Open these tabs in order: PR with plan comment, green apply run, green smoke job, red smoke run, rollback approval, rollback run.
+6. Tear down afterward: delete `rg-wealth-accounts-*`, make the repo private, and optionally run `scripts/bootstrap-azure.sh <owner>/<repo> --destroy` to remove the app registration.
 
 **Cue on each affected slide**
 - Slide 8 (pipeline): after the scaffold, say "this ran earlier" and open the PR plan comment and the green apply run.
