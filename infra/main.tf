@@ -8,10 +8,6 @@ terraform {
     }
   }
 
-  # Remote state is configured by the pipeline with -backend-config flags.
-  # Locally, initialise with `terraform init -backend=false` (the
-  # "Infra: init" task does this).
-  backend "azurerm" {}
 }
 
 provider "azurerm" {
