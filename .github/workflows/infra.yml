@@ -70,13 +70,7 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
       - name: Terraform init
         run: |
-          terraform init -input=false \
-            -backend-config="resource_group_name=${{ vars.TFSTATE_RESOURCE_GROUP }}" \
-            -backend-config="storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}" \
-            -backend-config="container_name=tfstate" \
-            -backend-config="key=accounts.tfstate" \
-            -backend-config="use_oidc=true" \
-            -backend-config="use_azuread_auth=true"
+          terraform init -input=false -backend=false
       - name: Terraform plan
         id: plan
         continue-on-error: true
@@ -123,13 +117,7 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
       - name: Terraform init
         run: |
-          terraform init -input=false \
-            -backend-config="resource_group_name=${{ vars.TFSTATE_RESOURCE_GROUP }}" \
-            -backend-config="storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}" \
-            -backend-config="container_name=tfstate" \
-            -backend-config="key=accounts.tfstate" \
-            -backend-config="use_oidc=true" \
-            -backend-config="use_azuread_auth=true"
+          terraform init -input=false -backend=false
       - name: Terraform plan
         run: terraform plan -no-color -input=false -out=tfplan
       - name: Terraform apply
@@ -186,13 +174,7 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
       - name: Terraform init
         run: |
-          terraform init -input=false \
-            -backend-config="resource_group_name=${{ vars.TFSTATE_RESOURCE_GROUP }}" \
-            -backend-config="storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}" \
-            -backend-config="container_name=tfstate" \
-            -backend-config="key=accounts.tfstate" \
-            -backend-config="use_oidc=true" \
-            -backend-config="use_azuread_auth=true"
+          terraform init -input=false -backend=false
       - name: Terraform plan
         run: terraform plan -no-color -input=false -out=tfplan
       - name: Terraform apply
