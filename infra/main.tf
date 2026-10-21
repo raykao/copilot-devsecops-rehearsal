@@ -41,7 +41,7 @@ variable "owner" {
 variable "transfer_limit" {
   description = "Per-transfer limit in CAD passed to the API as TRANSFER_LIMIT"
   type        = number
-  default     = 10000
+  default     = 5000
 }
 
 locals {
