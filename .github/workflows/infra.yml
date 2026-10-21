@@ -125,13 +125,6 @@ jobs:
       - name: Publish the API hostname
         id: out
         run: echo "hostname=$(terraform output -raw api_hostname)" >> "$GITHUB_OUTPUT"
-      - name: Deploy the API code
-        working-directory: .
-        run: |
-          app="$(terraform -chdir=infra output -raw api_app_name)"
-          rg="$(terraform -chdir=infra output -raw resource_group_name)"
-          zip -qr app.zip app
-          az webapp deploy --resource-group "$rg" --name "$app" --src-path app.zip --type zip
 
   smoke:
     name: Smoke check
