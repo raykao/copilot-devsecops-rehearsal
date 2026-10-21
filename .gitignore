@@ -1,5 +1,14 @@
+node_modules/
+dist/
+target/
 .terraform/
-*.tfstate*
-plan.txt
+*.tfstate
+*.tfstate.*
 tfplan
-app.zip
+logs/
+.demo-backup/
+*.log
+.DS_Store
+.idea/
+.hyperframes/
+!infra/samples/*.log

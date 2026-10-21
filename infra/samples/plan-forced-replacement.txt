@@ -1,0 +1,46 @@
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+-/+ destroy and then create replacement
+
+Terraform will perform the following actions:
+
+  # azurerm_linux_web_app.api must be replaced
+-/+ resource "azurerm_linux_web_app" "api" {
+      ~ default_hostname             = "app-wealth-accounts-prod-api.azurewebsites.net" -> (known after apply)
+      ~ id                           = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-wealth-accounts-prod/providers/Microsoft.Web/sites/app-wealth-accounts-prod-api" -> (known after apply)
+      ~ location                     = "canadacentral" -> "eastus" # forces replacement
+      ~ resource_group_name          = "rg-wealth-accounts-prod" -> (known after apply)
+      ~ service_plan_id              = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-wealth-accounts-prod/providers/Microsoft.Web/serverfarms/plan-wealth-accounts-prod" -> (known after apply) # forces replacement
+        name                         = "app-wealth-accounts-prod-api"
+        # (14 unchanged attributes hidden)
+
+        # (2 unchanged blocks hidden)
+    }
+
+  # azurerm_resource_group.main must be replaced
+-/+ resource "azurerm_resource_group" "main" {
+      ~ id       = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-wealth-accounts-prod" -> (known after apply)
+      ~ location = "canadacentral" -> "eastus" # forces replacement
+        name     = "rg-wealth-accounts-prod"
+        tags     = {
+            "app"         = "wealth-accounts"
+            "environment" = "prod"
+            "managed_by"  = "terraform"
+            "owner"       = "platform-team"
+        }
+    }
+
+  # azurerm_service_plan.main must be replaced
+-/+ resource "azurerm_service_plan" "main" {
+      ~ id                           = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-wealth-accounts-prod/providers/Microsoft.Web/serverfarms/plan-wealth-accounts-prod" -> (known after apply)
+      ~ location                     = "canadacentral" -> "eastus" # forces replacement
+      ~ resource_group_name          = "rg-wealth-accounts-prod" -> (known after apply)
+        name                         = "plan-wealth-accounts-prod"
+        # (7 unchanged attributes hidden)
+    }
+
+Plan: 3 to add, 0 to change, 3 to destroy.
+
+Changes to Outputs:
+  ~ api_hostname = "app-wealth-accounts-prod-api.azurewebsites.net" -> (known after apply)

@@ -1,0 +1,47 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Infra: init (no backend)",
+      "type": "shell",
+      "command": "terraform -chdir=infra init -backend=false -input=false",
+      "problemMatcher": []
+    },
+    {
+      "label": "Infra: format and validate",
+      "type": "shell",
+      "command": "terraform -chdir=infra fmt -check && terraform -chdir=infra validate",
+      "problemMatcher": []
+    },
+    {
+      "label": "Demo: preflight",
+      "type": "shell",
+      "command": "node scripts/demo.mjs preflight",
+      "problemMatcher": []
+    },
+    {
+      "label": "Demo: break the pipeline",
+      "type": "shell",
+      "command": "node scripts/demo.mjs break",
+      "problemMatcher": []
+    },
+    {
+      "label": "Demo: restore",
+      "type": "shell",
+      "command": "node scripts/demo.mjs restore",
+      "problemMatcher": []
+    },
+    {
+      "label": "Demo: jump to the answer key",
+      "type": "shell",
+      "command": "node scripts/demo.mjs solution",
+      "problemMatcher": []
+    },
+    {
+      "label": "Demo: reset to starter",
+      "type": "shell",
+      "command": "node scripts/demo.mjs reset",
+      "problemMatcher": []
+    }
+  ]
+}

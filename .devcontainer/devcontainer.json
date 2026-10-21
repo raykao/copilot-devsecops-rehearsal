@@ -1,0 +1,13 @@
+{
+  "name": "copilot-devsecops-demo",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/terraform:1": {}
+  },
+  "postCreateCommand": "terraform -chdir=infra init -backend=false -input=false",
+  "customizations": {
+    "vscode": {
+      "extensions": ["GitHub.copilot-chat", "HashiCorp.terraform", "GitHub.vscode-github-actions"]
+    }
+  }
+}

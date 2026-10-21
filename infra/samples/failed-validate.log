@@ -1,0 +1,24 @@
+2026-10-05T14:02:11.4021Z ##[group]Run terraform fmt -check -recursive
+2026-10-05T14:02:11.4412Z terraform fmt -check -recursive
+2026-10-05T14:02:12.0188Z ##[endgroup]
+2026-10-05T14:02:12.3320Z ##[group]Run terraform init -backend=false -input=false
+2026-10-05T14:02:12.3365Z terraform init -backend=false -input=false
+2026-10-05T14:02:12.3402Z ##[endgroup]
+2026-10-05T14:02:13.1177Z Initializing provider plugins...
+2026-10-05T14:02:13.1180Z - Reusing previous version of hashicorp/azurerm from the dependency lock file
+2026-10-05T14:02:13.9044Z - Using previously-installed hashicorp/azurerm v3.117.1
+2026-10-05T14:02:13.9102Z Terraform has been successfully initialized!
+2026-10-05T14:02:14.2210Z ##[group]Run terraform validate
+2026-10-05T14:02:14.2251Z terraform validate
+2026-10-05T14:02:14.2290Z ##[endgroup]
+2026-10-05T14:02:15.0063Z ╷
+2026-10-05T14:02:15.0064Z │ Error: Reference to undeclared input variable
+2026-10-05T14:02:15.0064Z │
+2026-10-05T14:02:15.0065Z │   on main.tf line 50, in locals:
+2026-10-05T14:02:15.0065Z │   50:     environment = var.env
+2026-10-05T14:02:15.0066Z │
+2026-10-05T14:02:15.0066Z │ An input variable with the name "env" has not been declared. This variable
+2026-10-05T14:02:15.0067Z │ can be declared with a variable "env" {} block.
+2026-10-05T14:02:15.0067Z ╵
+2026-10-05T14:02:15.0201Z ##[error]Terraform exited with code 1.
+2026-10-05T14:02:15.0334Z ##[error]Process completed with exit code 1.

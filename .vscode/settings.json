@@ -1,0 +1,9 @@
+{
+  // Keep Copilot from reading the answer key while you demo.
+  "search.exclude": {
+    "solutions/**": true,
+    "docs/**": true,
+    "**/node_modules": true,
+    "**/.terraform": true
+  }
+}

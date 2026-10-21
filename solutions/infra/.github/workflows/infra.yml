@@ -1,0 +1,182 @@
+# Answer key. Stages: validate (always) -> plan (PRs, posted as a
+# comment) -> apply (main only, behind the "production" environment) ->
+# smoke check. A manual run with rollback_ref re-applies a known-good commit.
+# Azure auth uses OIDC federation: no client secret is stored anywhere.
+name: Infrastructure
+
+on:
+  pull_request:
+    paths: [infra/**, .github/workflows/infra.yml]
+  push:
+    branches: [main]
+    paths: [infra/**, .github/workflows/infra.yml]
+  workflow_dispatch:
+    inputs:
+      rollback_ref:
+        description: Known-good commit SHA or tag to re-apply
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infra-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_VERSION: "1.7.5"
+  ARM_USE_OIDC: "true"
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+defaults:
+  run:
+    working-directory: infra
+
+jobs:
+  validate:
+    name: Format and validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false -input=false
+      - run: terraform validate
+
+  plan:
+    name: Plan
+    if: github.event_name == 'pull_request'
+    needs: validate
+    environment: plan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - name: Terraform init
+        run: |
+          terraform init -input=false
+      - name: Terraform plan
+        id: plan
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          terraform plan -no-color -input=false -out=tfplan | tee plan.txt
+      - name: Comment plan on the PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('infra/plan.txt', 'utf8').slice(-60000);
+            const outcome = '${{ steps.plan.outcome }}' === 'success' ? 'succeeded' : 'FAILED';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `#### Terraform plan ${outcome}\n<details><summary>Show plan</summary>\n\n\`\`\`\n${plan}\n\`\`\`\n</details>`,
+            });
+      - name: Fail the job if the plan failed
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+
+  apply:
+    name: Apply (requires approval)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    outputs:
+      hostname: ${{ steps.out.outputs.hostname }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - name: Terraform init
+        run: |
+          terraform init -input=false
+      - name: Terraform plan
+        run: terraform plan -no-color -input=false -out=tfplan
+      - name: Terraform apply
+        run: terraform apply -input=false tfplan
+      - name: Publish the API hostname
+        id: out
+        run: echo "hostname=$(terraform output -raw api_hostname)" >> "$GITHUB_OUTPUT"
+      - name: Deploy the API code
+        working-directory: .
+        run: |
+          app="$(terraform -chdir=infra output -raw api_app_name)"
+          rg="$(terraform -chdir=infra output -raw resource_group_name)"
+          zip -qr app.zip app
+          az webapp deploy --resource-group "$rg" --name "$app" --src-path app.zip --type zip
+
+  smoke:
+    name: Smoke check
+    needs: apply
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: Health endpoint answers
+        run: |
+          url="https://${{ needs.apply.outputs.hostname }}/api/health"
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent --show-error "$url"; then exit 0; fi
+            echo "Attempt $attempt failed, retrying in 10s"
+            sleep 10
+          done
+          echo "::error::Smoke check failed. Roll back: run this workflow manually with rollback_ref set to the last known-good commit."
+          exit 1
+
+  rollback:
+    name: Rollback (requires approval)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.rollback_ref }}
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - name: Terraform init
+        run: |
+          terraform init -input=false
+      - name: Terraform plan
+        run: terraform plan -no-color -input=false -out=tfplan
+      - name: Terraform apply
+        run: terraform apply -input=false tfplan
